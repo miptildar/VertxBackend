@@ -5,4 +5,5 @@ Supported features (in future):
 1. HTTPS
 2. Authorization using JSON Web Token standard
 3. Connection to RDBMS (here PostgreSQL)
-4. Conncetion to Redis
+4. Connection to Redis
+5. Tests
