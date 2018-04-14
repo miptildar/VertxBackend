@@ -8,6 +8,8 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 
+import java.util.HashMap;
+
 
 /**
  * 1. The @ProxyGen annotation is used to trigger the code generation of a proxy for clients of that service.
@@ -20,17 +22,24 @@ import io.vertx.ext.jdbc.JDBCClient;
 public interface DatabaseService {
 
     @Fluent
-    DatabaseService getSomething(Handler<AsyncResult<JsonObject>> resultHandler);
+    DatabaseService getSomething(String idParam, Handler<AsyncResult<JsonObject>> resultHandler);
 
 
-    static DatabaseService create(JDBCClient dbClient, Handler<AsyncResult<DatabaseService>> readyHandler) {
-        return new DatabaseServiceImpl(dbClient, readyHandler);
+    static DatabaseService create(JDBCClient dbClient, HashMap<SqlQuery, String> sqlQueries,  Handler<AsyncResult<DatabaseService>> readyHandler) {
+        return new DatabaseServiceImpl(dbClient, sqlQueries, readyHandler);
     }
 
 
-    // ????
+    /**
+     *  When you compose a Vert.x application, you may want to isolate a functionality somewhere
+     *  and make it available to the rest of your application. That’s the main purpose of service proxies.
+     *  It lets you expose a service on the event bus, so, any other Vert.x component can consume it,
+     *  as soon as they know the address (@param address) on which the service is published.
+     *
+     *  See, https://vertx.io/docs/vertx-service-proxy/java/
+     */
     static DatabaseService createProxy(Vertx vertx, String address) {
-        return null;
+        return new DatabaseServiceVertxEBProxy(vertx, address);
     }
 
 }

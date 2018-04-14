@@ -1,5 +1,6 @@
 package com.seeu;
 
+import com.seeu.database.PostgreSQLVerticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
@@ -10,34 +11,34 @@ import java.util.logging.Logger;
 
 public class MainVerticle extends AbstractVerticle {
 
-    Logger logger = Logger.getLogger(MainVerticle.class.getName());
+    private Logger logger = Logger.getLogger(MainVerticle.class.getName());
 
     @Override
     public void start(Future<Void> startFuture) throws Exception {
 
-
         Future<String> dbVerticleDeployment = Future.future();
 
-        /**
-         * Verticle deployment is asynchronous and may complete some time after the call to deploy has returned.
-         * If you want to be notified when deployment is complete you can deploy specifying a completion handler:
-         */
+        // Verticle deployment is asynchronous and may complete some time after the call to deploy has returned.
+        // If you want to be notified when deployment is complete you can deploy specifying a completion handler:
         vertx.deployVerticle(new PostgreSQLVerticle(), dbVerticleDeployment.completer());
 
 
-        // When dbVerticleDeployment.completer() will be called, the following callback will be performed
-        // Binding handler necessary for getting the information about the result of starting MainVerticle
+        // Sequential composition with compose allows to run one asynchronous operation AFTER the other.
+        // When the INITIAL future (here dbVerticleDeployment) completes successfully, the composition function is invoked.
         dbVerticleDeployment.compose(id -> {
 
             logger.log(Level.INFO, "PostgreSQLVerticle deployed. Starting HttpServerVerticle...");
 
             Future<String> httpVerticleDeployment = Future.future();
             vertx.deployVerticle(
-                    "com.seeu.HttpServerVerticle",
+                    "com.seeu.http.HttpServerVerticle",
                     new DeploymentOptions().setInstances(3),
                     httpVerticleDeployment.completer()
             );
 
+
+            // The composition function returns the NEXT future.
+            // Its completion will trigger the completion of the composite operation.
             return httpVerticleDeployment;
         }).setHandler(ar -> {
             if (ar.succeeded()) {
@@ -49,12 +50,6 @@ public class MainVerticle extends AbstractVerticle {
             }
         });
 
-
-
     }
-
-
-
-
 
 }

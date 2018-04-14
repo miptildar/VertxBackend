@@ -1,4 +1,4 @@
-import com.seeu.PostgreSQLVerticle;
+import com.seeu.database.PostgreSQLVerticle;
 import com.seeu.database.DatabaseService;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
