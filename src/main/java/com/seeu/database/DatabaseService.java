@@ -5,8 +5,10 @@ import io.vertx.codegen.annotations.ProxyGen;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.SQLClient;
 
 import java.util.HashMap;
 
@@ -22,11 +24,14 @@ import java.util.HashMap;
 public interface DatabaseService {
 
     @Fluent
-    DatabaseService getSomething(String idParam, Handler<AsyncResult<JsonObject>> resultHandler);
+    DatabaseService simpleGet(JsonArray params, Handler<AsyncResult<JsonObject>> resultHandler);
+
+    @Fluent
+    DatabaseService simplePut(JsonArray params, Handler<AsyncResult<JsonObject>> resultHandler);
 
 
-    static DatabaseService create(JDBCClient dbClient, HashMap<SqlQuery, String> sqlQueries,  Handler<AsyncResult<DatabaseService>> readyHandler) {
-        return new DatabaseServiceImpl(dbClient, sqlQueries, readyHandler);
+    static DatabaseService create(SQLClient sqlClient, HashMap<SqlQuery, String> sqlQueries, Handler<AsyncResult<DatabaseService>> readyHandler) {
+        return new DatabaseServiceImpl(sqlClient, sqlQueries, readyHandler);
     }
 
 

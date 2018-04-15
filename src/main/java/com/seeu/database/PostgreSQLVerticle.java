@@ -3,7 +3,9 @@ package com.seeu.database;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.asyncsql.PostgreSQLClient;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.SQLClient;
 import io.vertx.serviceproxy.ProxyHelper;
 
 import java.io.FileInputStream;
@@ -11,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class PostgreSQLVerticle extends AbstractVerticle {
@@ -21,26 +24,33 @@ public class PostgreSQLVerticle extends AbstractVerticle {
     public static final String CONFIG_JDBC_DRIVER_CLASS_KEY = "jdbc.driver_class";
     public static final String CONFIG_JDBC_MAX_POOL_SIZE_KEY = "jdbc.max_pool_size";
     public static final String CONFIG_SQL_QUERIES_RESOURCE_FILE_KEY = "sqlqueries.resource.file";
-    public static final String CONFIG_QUEUE_KEY = "queue";
+    public static final String CONFIG_QUEUE = "queue";
 
-    private JDBCClient dbClient;
 
-    private DatabaseService databaseService;
+    public static final String PostgreSQL_POOL_NAME = "PostgreSQLPool";
+
+    private SQLClient postgreSQLClient;
 
     @Override
     public void start(Future<Void> startFuture) throws Exception {
+        logger.log(Level.INFO, "Starting PostgreSQLVerticle..");
 
         HashMap<SqlQuery, String> sqlQueries = loadSQLQueries();
 
-        dbClient = JDBCClient.createShared(vertx, new JsonObject()
-                .put("url", config().getString(CONFIG_JDBC_URL_KEY, "jdbc:....."))
-                .put("driver_class", config().getString(CONFIG_JDBC_DRIVER_CLASS_KEY, "...."))
-                .put("max_pool_size", config().getInteger(CONFIG_JDBC_MAX_POOL_SIZE_KEY, 30)));
+        // https://vertx.io/docs/vertx-mysql-postgresql-client/java/
+        JsonObject postgreSQLClientConfig = new JsonObject()
+                .put("host", "localhost")
+                .put("port", 5432)
+                .put("maxPoolSize", 30)
+                .put("username", "postgres")
+                .put("password", "passw0rd")
+                .put("database", "my_database");
+        postgreSQLClient = PostgreSQLClient.createShared(vertx, postgreSQLClientConfig, PostgreSQL_POOL_NAME);
 
 
-        databaseService = DatabaseService.create(dbClient, sqlQueries, ready -> {
+        DatabaseService.create(postgreSQLClient, sqlQueries, ready -> {
             if (ready.succeeded()) {
-                ProxyHelper.registerService(DatabaseService.class, vertx, ready.result(), CONFIG_QUEUE_KEY);
+                ProxyHelper.registerService(DatabaseService.class, vertx, ready.result(), CONFIG_QUEUE);
                 startFuture.complete();
             } else {
                 startFuture.fail(ready.cause());
@@ -57,7 +67,7 @@ public class PostgreSQLVerticle extends AbstractVerticle {
         if (queriesFile != null) {
             queriesInputStream = new FileInputStream(queriesFile);
         } else {
-            queriesInputStream = getClass().getResourceAsStream("/db-queries.properties");
+            queriesInputStream = getClass().getResourceAsStream("/db_queries.properties");
         }
 
         Properties queriesProps = new Properties();
@@ -66,11 +76,14 @@ public class PostgreSQLVerticle extends AbstractVerticle {
 
 
         HashMap<SqlQuery, String> sqlQueries = new HashMap<>();
-        sqlQueries.put(SqlQuery.GET_SOMETHING, queriesProps.getProperty("get-something-query"));
-        // ... load other queries from the file
+        sqlQueries.put(SqlQuery.GET, queriesProps.getProperty("get-query"));
+        sqlQueries.put(SqlQuery.PUT, queriesProps.getProperty("put-query"));
+        // ... save other queries from the file
+
+        System.out.println(SqlQuery.GET.name()+" => "+queriesProps.getProperty("get-query"));
+        System.out.println(SqlQuery.PUT.name()+" => "+queriesProps.getProperty("put-query"));
 
         return sqlQueries;
     }
-
 
 }

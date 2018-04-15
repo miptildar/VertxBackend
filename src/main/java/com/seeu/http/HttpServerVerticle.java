@@ -1,11 +1,13 @@
 package com.seeu.http;
 
 import com.seeu.database.DatabaseService;
+import com.seeu.database.PostgreSQLVerticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.JksOptions;
 import io.vertx.ext.auth.jwt.JWTAuth;
@@ -13,17 +15,21 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.JWTAuthHandler;
 
-import static com.seeu.database.PostgreSQLVerticle.CONFIG_QUEUE_KEY;
+import java.util.logging.Logger;
+
+import static com.seeu.database.PostgreSQLVerticle.CONFIG_QUEUE;
 
 public class HttpServerVerticle extends AbstractVerticle {
 
+    Logger logger = Logger.getLogger(HttpServerVerticle.class.getName());
+
     DatabaseService databaseService;
-    
+
     @Override
     public void start(Future<Void> startFuture) throws Exception {
 
         // Connection with database service
-        String dbQueue = config().getString(CONFIG_QUEUE_KEY, "queue");
+        String dbQueue = config().getString(CONFIG_QUEUE, "queue");
         databaseService = DatabaseService.createProxy(vertx, dbQueue);
 
 
@@ -87,11 +93,22 @@ public class HttpServerVerticle extends AbstractVerticle {
     private void getSomethingHandler(RoutingContext context){
         String id = context.request().getParam("id");
 
-        databaseService.getSomething(id, resultHandler -> {
+        JsonArray params = new JsonArray()
+                .add("vertx")   // database name
+                .add("vertx")   // table name
+                .add("id")      // column name
+                .add(id);       // column value
+
+        databaseService.simpleGet(params, resultHandler -> {
             if(resultHandler.succeeded()){
-                context.put("", resultHandler.result());
+                context.put("db_name_column", resultHandler.result().getString("name"));
             }
         });
+    }
+
+
+    private void putSomethingHandler(RoutingContext context){
+
     }
 
 }
