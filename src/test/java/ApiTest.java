@@ -4,9 +4,12 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Collections;
+
 @RunWith(VertxUnitRunner.class)
 public class ApiTest {
-
 
     /**
      * https://vertx.io/docs/guide-for-java-devs/#_authenticating_web_api_requests_with_jwt
@@ -15,7 +18,6 @@ public class ApiTest {
     @Test
     public void jwt_test(TestContext context){
         System.out.println("Testing JSON Web Token authorization");
-
     }
 
     @Test

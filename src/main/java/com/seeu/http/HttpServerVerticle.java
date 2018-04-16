@@ -1,7 +1,6 @@
 package com.seeu.http;
 
 import com.seeu.database.DatabaseService;
-import com.seeu.database.PostgreSQLVerticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpServer;
@@ -10,10 +9,13 @@ import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.net.JksOptions;
+import io.vertx.ext.auth.KeyStoreOptions;
+import io.vertx.ext.auth.User;
 import io.vertx.ext.auth.jwt.JWTAuth;
+import io.vertx.ext.auth.jwt.JWTAuthOptions;
+import io.vertx.ext.jwt.JWTOptions;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.JWTAuthHandler;
 
 import java.util.logging.Logger;
 
@@ -24,6 +26,8 @@ public class HttpServerVerticle extends AbstractVerticle {
     Logger logger = Logger.getLogger(HttpServerVerticle.class.getName());
 
     DatabaseService databaseService;
+
+    JWTAuth jwtAuth;
 
     @Override
     public void start(Future<Void> startFuture) throws Exception {
@@ -44,7 +48,9 @@ public class HttpServerVerticle extends AbstractVerticle {
         HttpServer server = vertx.createHttpServer(httpServerOptions);
 
         Router router = Router.router(vertx);
-        router.route("/some/path/1").handler(routingContext -> {
+        router.route("/some/path/:param").handler(routingContext -> {
+            String urlParam = routingContext.request().getParam("param");
+
             HttpServerResponse response = routingContext.response();
 
             // enable chunked responses because we will be adding data as
@@ -52,7 +58,9 @@ public class HttpServerVerticle extends AbstractVerticle {
             // only if several handlers do output.
             response.setChunked(true);
 
-            response.write("route1");
+            response.putHeader("Content-Type", "text/html");
+            response.write("<html><body><h1>Param "+urlParam+"</h1></body></html>");
+            response.end();
 
             // Call the next matching route after a 5 second delay
             routingContext.vertx().setTimer(5000, tid -> routingContext.next());
@@ -60,20 +68,27 @@ public class HttpServerVerticle extends AbstractVerticle {
 
         router.route("/get/:id").handler(this::getSomethingHandler);
 
+        // E.g. generating new token, probably bad practice.. this is only for example
+        // Implement signIn/signUp methods on your own, solve problems related to username/password transferring
+        router.route("/api/newToken").handler(this::newToken);
 
 
 
-        JWTAuth jwtAuth = JWTAuth.create(vertx, new JsonObject()
-                .put("keyStore",
-                        new JsonObject()
-                                .put("path", "keystore/jwt_keystore.jceks")
-                                .put("type", "jceks")
-                                .put("password", "test1/")
-                )
-        );
 
-        // Create new JWT token
-        router.route().handler(JWTAuthHandler.create(jwtAuth, "/api/token"));
+
+
+        // JSON Web Token init
+        // https://vertx.io/docs/vertx-auth-jwt/java/
+        JWTAuthOptions config = new JWTAuthOptions()
+                .setKeyStore(new KeyStoreOptions()
+                        .setPath("keystore/jwt_keystore.jceks")
+                        .setPassword("test1/")
+                );
+        jwtAuth = JWTAuth.create(vertx, config);
+
+
+
+
 
 
         server.requestHandler(router::accept).listen(4443, ar -> {
@@ -89,26 +104,57 @@ public class HttpServerVerticle extends AbstractVerticle {
     }
 
 
+    private void getSomethingHandler(RoutingContext context) {
 
-    private void getSomethingHandler(RoutingContext context){
-        String id = context.request().getParam("id");
+        // Probably one have to perform some extra work, in order to extract jwt-token from the header, this is for example only
+        String token = context.request().getHeader("Authorization");
 
-        JsonArray params = new JsonArray()
-                .add("vertx")   // database name
-                .add("vertx")   // table name
-                .add("id")      // column name
-                .add(id);       // column value
+        jwtAuth.authenticate(new JsonObject().put("jwt", token), result -> {
+            if(result.succeeded()){
 
-        databaseService.simpleGet(params, resultHandler -> {
-            if(resultHandler.succeeded()){
-                context.put("db_name_column", resultHandler.result().getString("name"));
+                // ???
+                User user = result.result();
+
+
+                String id = context.request().getParam("id");
+                JsonArray params = new JsonArray()
+                        .add(id);       // id column value
+
+                databaseService.simpleGet(params, resultHandler -> {
+                    if (resultHandler.succeeded()) {
+                        //
+                        context.response().putHeader("Content-Type", "text/html");
+                        context.response().end(resultHandler.result().getString("name"));
+                    }
+                });
+
+            }else{
+                context.response().setStatusCode(401);
+                context.response().end("Unauthorized");
             }
         });
+
+
     }
 
 
-    private void putSomethingHandler(RoutingContext context){
+    private void newToken(RoutingContext context) {
+        // If token is missing, then the user is unknown and you have redirect him to "Sign In" page (obviously)
+        // If the current token is expired, one have to generate a new one
 
+
+        JsonObject newTokenParams = new JsonObject()
+                .put("username", "my_user_name");
+        // probably some other information is required, read docs
+
+
+        JWTOptions jwtOptions = new JWTOptions()
+                .setExpiresInMinutes(3600)
+                .setAlgorithm("Algorithm")
+                .setSubject("My App API")
+                .setIssuer("...");
+        String newToken = jwtAuth.generateToken(newTokenParams, jwtOptions);
+        // New token is generated, deliver it to the user
     }
 
 }

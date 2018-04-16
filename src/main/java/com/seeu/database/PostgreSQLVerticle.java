@@ -43,8 +43,8 @@ public class PostgreSQLVerticle extends AbstractVerticle {
                 .put("port", 5432)
                 .put("maxPoolSize", 30)
                 .put("username", "postgres")
-                .put("password", "passw0rd")
-                .put("database", "my_database");
+                .put("password", "3sxjtNe1/")
+                .put("database", "tigasedb");
         postgreSQLClient = PostgreSQLClient.createShared(vertx, postgreSQLClientConfig, PostgreSQL_POOL_NAME);
 
 
