@@ -1,5 +1,5 @@
 # HTTPS backend on Vert.x framework
-The project will contain all the files necessary to start developing HTTP backend using the Vert.x framework
+The project contains all the files necessary to start developing HTTP backend using the Vert.x framework
 
 Supported features (in future):
 1. HTTPS
