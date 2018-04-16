@@ -8,7 +8,8 @@ Supported features (in future):
 4. Tests
 
 
-Useful articles:
+
+### Useful information:
 1. [Vertx scaling the number of instances per thread](https://stackoverflow.com/a/40716321/3405101)
 
 2. [Vert.x Event loop - How is this asynchronous?](https://stackoverflow.com/a/34033439/3405101)
